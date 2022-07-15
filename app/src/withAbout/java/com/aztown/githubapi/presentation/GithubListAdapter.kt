@@ -38,7 +38,6 @@ class GithubListAdapter @Inject constructor() :
                 .apply(RequestOptions().override(PICTURE_SIZE_SQUARE, PICTURE_SIZE_SQUARE))
                 .into(ivAvatar)
             root.setOnClickListener {
-                //TODO( does the ID must be nullable? )
                 item.ownerUsername?.let {
                     onRepoClickListener?.invoke(it)
                 }

@@ -10,7 +10,6 @@ import androidx.appcompat.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-import com.aztown.githubapi.R
 import com.aztown.githubapi.databinding.FragmentRepositoriesListBinding
 import com.aztown.githubapi.presentation.adapter.GithubListAdapter
 import kotlinx.coroutines.flow.collectLatest
@@ -33,6 +32,10 @@ class RepositoriesListFragment : Fragment() {
         (requireActivity().application as GithubApplication).component
     }
 
+    private val viewModel by lazy {
+        ViewModelProvider(this, viewModelFactory)[RepositoriesViewModel::class.java]
+    }
+
     override fun onAttach(context: Context) {
         component.inject(this)
         super.onAttach(context)
@@ -50,18 +53,23 @@ class RepositoriesListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val viewModel =
-            ViewModelProvider(this, viewModelFactory).get(RepositoriesViewModel::class.java)
+        setupAdapter()
+        setupListeners()
+    }
 
-        val recyclerView = binding.rvGithubList
-        recyclerView.adapter = githubAdapter
+    private fun setupListeners() {
+        setupSearchViewClickListener()
+        setupSwipeToRefreshListener()
+    }
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.gitRepoFlow.collectLatest {
-                githubAdapter.submitData(it)
-            }
+    private fun setupSwipeToRefreshListener() {
+        binding.swipeRefresh.setOnRefreshListener {
+            viewModel.refresh()
+            binding.swipeRefresh.isRefreshing = false
         }
+    }
 
+    private fun setupSearchViewClickListener() {
         binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
                 return if (query != null) {
@@ -82,10 +90,15 @@ class RepositoriesListFragment : Fragment() {
                 return true
             }
         })
+    }
 
-        binding.swipeRefresh.setOnRefreshListener {
-            viewModel.refresh()
-            binding.swipeRefresh.isRefreshing = false
+    private fun setupAdapter() {
+        binding.rvGithubList.adapter = githubAdapter
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.gitRepoFlow.collectLatest {
+                githubAdapter.submitData(it)
+            }
         }
     }
 

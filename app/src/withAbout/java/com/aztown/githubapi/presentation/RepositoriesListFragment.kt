@@ -33,6 +33,10 @@ class RepositoriesListFragment : Fragment() {
         (requireActivity().application as GithubApplication).component
     }
 
+    private val viewModel by lazy {
+        ViewModelProvider(this, viewModelFactory)[RepositoriesViewModel::class.java]
+    }
+
     override fun onAttach(context: Context) {
         component.inject(this)
         super.onAttach(context)
@@ -49,26 +53,33 @@ class RepositoriesListFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setupAdapter()
+        setupListeners()
+    }
 
-        val viewModel =
-            ViewModelProvider(this, viewModelFactory).get(RepositoriesViewModel::class.java)
-
-        val recyclerView = binding.rvGithubList
-        recyclerView.adapter = githubAdapter
-
-        githubAdapter.onRepoClickListener = { username ->
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.container, RepositoryUserFragment.newInstance(username))
-                .addToBackStack(null)
-                .commit()
-        }
-
+    private fun setupAdapter() {
+        binding.rvGithubList.adapter = githubAdapter
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.gitRepoFlow.collectLatest {
                 githubAdapter.submitData(it)
             }
         }
+    }
 
+    private fun setupListeners() {
+        setupAdapterClickListener()
+        setupSearchViewClickListener()
+        setupSwipeToRefreshListener()
+    }
+
+    private fun setupSwipeToRefreshListener() {
+        binding.swipeRefresh.setOnRefreshListener {
+            viewModel.refresh()
+            binding.swipeRefresh.isRefreshing = false
+        }
+    }
+
+    private fun setupSearchViewClickListener() {
         binding.searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
                 return if (query != null) {
@@ -89,10 +100,14 @@ class RepositoriesListFragment : Fragment() {
                 return true
             }
         })
+    }
 
-        binding.swipeRefresh.setOnRefreshListener {
-            viewModel.refresh()
-            binding.swipeRefresh.isRefreshing = false
+    private fun setupAdapterClickListener() {
+        githubAdapter.onRepoClickListener = { username ->
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.container, RepositoryUserFragment.newInstance(username))
+                .addToBackStack(null)
+                .commit()
         }
     }
 
